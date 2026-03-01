@@ -7,12 +7,17 @@ import { JobCard } from '@/components/public/JobCard';
 import { db } from '@/lib/db';
 
 export default async function HomePage() {
-  const featuredJobs = await db.job.findMany({
-    where: { status: 'PUBLISHED' },
-    include: { hotel: true, department: true },
-    orderBy: { publishedAt: 'desc' },
-    take: 6,
-  });
+  let featuredJobs: Awaited<ReturnType<typeof db.job.findMany>> = [];
+  try {
+    featuredJobs = await db.job.findMany({
+      where: { status: 'PUBLISHED' },
+      include: { hotel: true, department: true },
+      orderBy: { publishedAt: 'desc' },
+      take: 6,
+    });
+  } catch {
+    // DB unavailable (e.g. Vercel env) – show page without featured jobs
+  }
 
   return (
     <>

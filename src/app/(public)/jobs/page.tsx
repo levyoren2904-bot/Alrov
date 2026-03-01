@@ -26,30 +26,38 @@ interface JobsPageProps {
 export default async function JobsPage({ searchParams }: JobsPageProps) {
   const params = await searchParams;
 
-  const [hotels, departments] = await Promise.all([
-    db.hotel.findMany({ select: { id: true, name: true } }),
-    db.department.findMany({ select: { id: true, name: true } }),
-  ]);
+  let hotels: { id: string; name: string }[] = [];
+  let departments: { id: string; name: string }[] = [];
+  let jobs: Awaited<ReturnType<typeof db.job.findMany>> = [];
 
-  const where = {
-    status: 'PUBLISHED' as const,
-    ...(params.hotel && { hotelId: params.hotel }),
-    ...(params.department && { departmentId: params.department }),
-    ...(params.type && { employmentType: params.type as EmploymentType }),
-    ...(params.q && {
-      OR: [
-        { title: { contains: params.q, mode: 'insensitive' as const } },
-        { description: { contains: params.q, mode: 'insensitive' as const } },
-        { city: { contains: params.q, mode: 'insensitive' as const } },
-      ],
-    }),
-  };
+  try {
+    [hotels, departments] = await Promise.all([
+      db.hotel.findMany({ select: { id: true, name: true } }),
+      db.department.findMany({ select: { id: true, name: true } }),
+    ]);
 
-  const jobs = await db.job.findMany({
-    where,
-    include: { hotel: true, department: true },
-    orderBy: { publishedAt: 'desc' },
-  });
+    const where = {
+      status: 'PUBLISHED' as const,
+      ...(params.hotel && { hotelId: params.hotel }),
+      ...(params.department && { departmentId: params.department }),
+      ...(params.type && { employmentType: params.type as EmploymentType }),
+      ...(params.q && {
+        OR: [
+          { title: { contains: params.q, mode: 'insensitive' as const } },
+          { description: { contains: params.q, mode: 'insensitive' as const } },
+          { city: { contains: params.q, mode: 'insensitive' as const } },
+        ],
+      }),
+    };
+
+    jobs = await db.job.findMany({
+      where,
+      include: { hotel: true, department: true },
+      orderBy: { publishedAt: 'desc' },
+    });
+  } catch {
+    // DB unavailable – show page with empty state
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-14 md:py-16">
