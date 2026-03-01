@@ -7,7 +7,8 @@ import { JobCard } from '@/components/public/JobCard';
 import { db } from '@/lib/db';
 
 export default async function HomePage() {
-  let featuredJobs: Awaited<ReturnType<typeof db.job.findMany>> = [];
+  type JobWithRelations = { id: string; title: string; slug: string; city: string; employmentType: string; publishedAt: Date | null; hotel: { name: string }; department: { name: string } };
+  let featuredJobs: JobWithRelations[] = [];
   try {
     featuredJobs = await db.job.findMany({
       where: { status: 'PUBLISHED' },

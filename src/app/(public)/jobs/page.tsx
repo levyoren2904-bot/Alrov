@@ -28,7 +28,8 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
 
   let hotels: { id: string; name: string }[] = [];
   let departments: { id: string; name: string }[] = [];
-  let jobs: Awaited<ReturnType<typeof db.job.findMany>> = [];
+  type JobWithRelations = { id: string; title: string; slug: string; city: string; employmentType: string; publishedAt: Date | null; hotel: { name: string }; department: { name: string } };
+  let jobs: JobWithRelations[] = [];
 
   try {
     [hotels, departments] = await Promise.all([
