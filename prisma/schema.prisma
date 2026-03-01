@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  HR_MANAGER
+  RECRUITER
+  VIEWER
+}
+
+enum JobStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  TEMPORARY
+  INTERNSHIP
+}
+
+enum ApplicationStatus {
+  NEW
+  IN_REVIEW
+  PHONE_SCREEN
+  INTERVIEW_SCHEDULED
+  INTERVIEWED
+  OFFER_SENT
+  HIRED
+  REJECTED
+  WITHDRAWN
+  ARCHIVED
+}
+
+enum EmailType {
+  APPLICATION_CONFIRMATION
+  RECRUITER_NOTIFICATION
+  STATUS_UPDATE
+  GENERAL
+}
+
+enum EmailStatus {
+  SENT
+  FAILED
+  PENDING
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         UserRole @default(VIEWER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignedJobs      Job[]              @relation("AssignedRecruiter")
+  applicationNotes  ApplicationNote[]
+  applicationEvents ApplicationEvent[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Hotel {
+  id       String @id @default(cuid())
+  name     String
+  slug     String @unique
+  city     String
+  imageUrl String @default("")
+  createdAt DateTime @default(now())
+
+  jobs Job[]
+
+  @@index([slug])
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  jobs Job[]
+
+  @@index([slug])
+}
+
+model Job {
+  id                 String         @id @default(cuid())
+  title              String
+  slug               String         @unique
+  hotelId            String
+  departmentId       String
+  employmentType     EmploymentType
+  city               String
+  description        String         @db.Text
+  responsibilities   String         @db.Text
+  requirements       String         @db.Text
+  benefits           String         @db.Text
+  screeningQuestions Json           @default("[]")
+  recipientEmails    Json           @default("[]")
+  recruiterId        String?
+  status             JobStatus      @default(DRAFT)
+  publishedAt        DateTime?
+  closedAt           DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  hotel        Hotel        @relation(fields: [hotelId], references: [id])
+  department   Department   @relation(fields: [departmentId], references: [id])
+  recruiter    User?        @relation("AssignedRecruiter", fields: [recruiterId], references: [id])
+  applications Application[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([hotelId])
+  @@index([departmentId])
+  @@index([recruiterId])
+}
+
+model Application {
+  id               String            @id @default(cuid())
+  jobId            String
+  fullName         String
+  email            String
+  phone            String
+  city             String            @default("")
+  linkedinUrl      String            @default("")
+  cvPath           String
+  cvOriginalName   String
+  screeningAnswers Json              @default("[]")
+  privacyConsent   Boolean           @default(true)
+  status           ApplicationStatus @default(NEW)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  job    Job               @relation(fields: [jobId], references: [id])
+  notes  ApplicationNote[]
+  events ApplicationEvent[]
+  emails EmailDelivery[]
+
+  @@index([jobId])
+  @@index([status])
+  @@index([email])
+  @@index([createdAt])
+}
+
+model ApplicationNote {
+  id            String   @id @default(cuid())
+  applicationId String
+  userId        String
+  content       String   @db.Text
+  createdAt     DateTime @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@index([applicationId])
+}
+
+model ApplicationEvent {
+  id            String   @id @default(cuid())
+  applicationId String
+  userId        String?
+  type          String
+  metadata      Json     @default("{}")
+  createdAt     DateTime @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user        User?       @relation(fields: [userId], references: [id])
+
+  @@index([applicationId])
+  @@index([createdAt])
+}
+
+model EmailDelivery {
+  id            String      @id @default(cuid())
+  to            String
+  subject       String
+  body          String      @db.Text
+  type          EmailType
+  status        EmailStatus @default(PENDING)
+  applicationId String?
+  jobId         String?
+  sentAt        DateTime?
+  createdAt     DateTime    @default(now())
+
+  application Application? @relation(fields: [applicationId], references: [id])
+
+  @@index([applicationId])
+  @@index([type])
+  @@index([createdAt])
+}
